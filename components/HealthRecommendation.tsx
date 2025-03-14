@@ -15,7 +15,7 @@ const HealthRecommendation: React.FC<HealthRecommendationProps> = ({ pmValue }) 
     <View style={styles.recommendationContainer}>
       <Text style={styles.sectionTitle}>คำแนะนำด้านสุขภาพ</Text>
       <View style={styles.recommendationContent}>
-        <Text style={styles.recommendationEmoji}>☺</Text>
+      <Text style={styles.recommendationEmoji}>{statusInfo.emoji}</Text>
         <Text style={styles.recommendationText}>{recommendation}</Text>
       </View>
     </View>
@@ -24,14 +24,21 @@ const HealthRecommendation: React.FC<HealthRecommendationProps> = ({ pmValue }) 
 
 // ฟังก์ชันส่งคำแนะนำตามค่า PM
 const getRecommendation = (value: number): string => {
-  if (value <= 25) {
-    return "ทุกคนสามารถทำกิจกรรมต่างๆ ได้ตามปกติ";
-  } else if (value <= 100) {
-    return "ควรหลีกเลี่ยงกิจกรรมกลางแจ้งหากรู้สึกไม่สบาย";
+  if (value <= 15) {
+    return "อากาศดีมาก ทุกคนสามารถทำกิจกรรมต่างๆ ได้ตามปกติ";
+  } else if (value <= 25) {
+    return "อากาศดี สามารถทำกิจกรรมกลางแจ้งได้";
+  } else if (value <= 37) {
+    return "เริ่มมีผลกระทบกับกลุ่มเสี่ยง เช่น ผู้ป่วยโรคทางเดินหายใจ ควรลดกิจกรรมกลางแจ้งหากมีอาการผิดปกติ";
+  } else if (value <= 50) {
+    return "กลุ่มเสี่ยง (เด็ก, ผู้สูงอายุ, ผู้ป่วยโรคปอด) ควรหลีกเลี่ยงกิจกรรมกลางแจ้ง";
+  } else if (value <= 90) {
+    return "ควรลดกิจกรรมกลางแจ้ง และสวมหน้ากาก N95 หากจำเป็นต้องออกนอกอาคาร";
   } else {
-    return "ควรหลีกเลี่ยงกิจกรรมกลางแจ้งทุกชนิด";
+    return "อันตราย ควรอยู่ภายในอาคารที่มีการกรองอากาศ และหลีกเลี่ยงกิจกรรมกลางแจ้งทุกชนิด";
   }
 };
+
 
 const styles = StyleSheet.create({
   recommendationContainer: {
@@ -39,7 +46,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    color: 'white',
+    color: 'Black',
     marginBottom: 8,
   },
   recommendationContent: {
@@ -49,11 +56,11 @@ const styles = StyleSheet.create({
   recommendationEmoji: {
     fontSize: 36,
     marginRight: 16,
-    color: 'white',
+    color: 'Black',
   },
   recommendationText: {
     fontSize: 18,
-    color: 'white',
+    color: 'Black',
     flex: 1,
   },
 });

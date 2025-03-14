@@ -57,7 +57,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#ffff',
   },
   content: {
     flexGrow: 1,
@@ -68,10 +68,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212',
+    backgroundColor: '#ffff',
   },
   loadingText: {
-    color: 'white',
+    color: 'Black',
     marginTop: 10,
     fontSize: 18,
   },
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212',
+    backgroundColor: '#ffff',
     padding: 20,
   },
   errorText: {

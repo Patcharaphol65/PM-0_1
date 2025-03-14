@@ -23,7 +23,7 @@ const App = () => {
             screenOptions={({ route }) => ({
               headerShown: false,
               tabBarStyle: {
-                backgroundColor: '#333', 
+                backgroundColor: '#D5C7A3', 
                 borderTopWidth: 0, 
                 height: 60, 
                 paddingBottom: 10,
@@ -51,8 +51,8 @@ const App = () => {
 
                 return <Ionicons name={iconName} size={size} color={color} />;
               },
-              tabBarActiveTintColor: '#4CAF50', 
-              tabBarInactiveTintColor: '#888',
+              tabBarActiveTintColor: '#543310', 
+              tabBarInactiveTintColor: '#AF8F6F',
             })}
           >
             <Tab.Screen name="Home" component={HomeScreen} />

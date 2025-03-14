@@ -36,11 +36,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    color: 'white',
+    color: 'Black',
     marginBottom: 8,
   },
   pmDetailCard: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#FDFBEE',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -61,14 +61,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pmDetailLabel: {
-    color: 'white',
+    color: 'Black',
     fontSize: 16,
   },
   pmDetailValue: {
     fontSize: 42,
   },
   pmDetailUnit: {
-    color: '#888888',
+    color: 'Black',
     fontSize: 12,
   },
   pmDetailStatus: {

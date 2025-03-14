@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Dimensions,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
 } from "react-native";
 import { BarChart } from "react-native-chart-kit";
@@ -40,18 +41,23 @@ const PMChart = () => {
   const [selectedPM, setSelectedPM] = useState<PMTypesKey>("PM 0.1");
   const [showPMDropdown, setShowPMDropdown] = useState(false);
   
-  // ข้อมูลเริ่มต้น (จะถูกอัปเดตเมื่อได้ข้อมูลจริง)
+  // Initial empty data structure
   const initialPmData: Record<PMTypesKey, number[]> = {
-    "PM 0.1": [0.2, 0.4, 0.5, 0.6, 0.8, 1.0, 0.7],
-    "PM 2.5": [1.5, 2.1, 2.7, 3.0, 2.8, 2.5, 2.0]
+    "PM 0.1": [],
+    "PM 2.5": []
   };
   
   const [pmData, setPmData] = useState(initialPmData);
-  const [dateLabels, setDateLabels] = useState<string[]>(["01 ม.ค.", "02 ม.ค.", "03 ม.ค.", "04 ม.ค.", "05 ม.ค.", "06 ม.ค.", "07 ม.ค."]);
+  const [dateLabels, setDateLabels] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("01-01-2024");
   const [endDate, setEndDate] = useState("07-01-2024");
-  const [minMaxValues, setMinMaxValues] = useState({ min: 0.2, max: 1.0 });
+  const [minMaxValues, setMinMaxValues] = useState({ min: 0, max: 0 });
   const [loading, setLoading] = useState(true);
+  
+  // เพิ่มส่วนนี้: state สำหรับข้อมูลเมื่อกดแท่งกราฟ
+  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
+  const [showBarData, setShowBarData] = useState(false);
+  const [selectedBarData, setSelectedBarData] = useState<any>(null);
   
   // Calculated chart data based on selected PM type
   const [chartData, setChartData] = useState<ChartDataType>({
@@ -59,7 +65,7 @@ const PMChart = () => {
     datasets: [
       {
         data: pmData["PM 0.1"],
-        colors: Array(7).fill((opacity = 1) => `rgba(215, 255, 0, ${opacity})`) // Yellowish-green color
+        colors: Array(7).fill((opacity = 1) => `rgba(194, 215, 51, ${opacity})`) // สีเขียวอ่อน-เหลือง ตามภาพตัวอย่าง
       },
     ],
   });
@@ -94,14 +100,10 @@ const PMChart = () => {
           const pm25Values: number[] = [];
           
           dates.forEach(date => {
-            // ดึงข้อมูลล่าสุดของแต่ละวัน
-            const timeEntries = Object.keys(data[date]).sort();
-            const latestEntry = timeEntries[timeEntries.length - 1]; // เอาข้อมูลล่าสุดของวัน
-            
-            if (data[date][latestEntry]?.Data) {
-              const latestData = data[date][latestEntry].Data;
-              pm01Values.push(parseFloat(latestData.PM0_1.toFixed(2)) || 0);
-              pm25Values.push(parseFloat(latestData.PM2_5.toFixed(2)) || 0);
+            // ดึงข้อมูลแต่ละวันโดยตรงจากโครงสร้างใหม่
+            if (data[date]) {
+              pm01Values.push(parseFloat(data[date].pm0_1_predicted?.toFixed(2)) || 0);
+              pm25Values.push(parseFloat(data[date].pm2_5?.toFixed(2)) || 0);
             } else {
               pm01Values.push(0);
               pm25Values.push(0);
@@ -134,7 +136,8 @@ const PMChart = () => {
             datasets: [
               {
                 data: selectedPM === "PM 0.1" ? pm01Values : pm25Values,
-                colors: Array(dates.length).fill((opacity = 1) => `rgba(215, 255, 0, ${opacity})`)
+                // แก้ไขสีกราฟ PM เป็นสีเขียวอ่อน-เหลือง ตามภาพตัวอย่าง
+                colors: Array(dates.length).fill((opacity = 1) => `rgba(194, 215, 51, ${opacity})`)
               },
             ],
           });
@@ -167,13 +170,39 @@ const PMChart = () => {
       datasets: [
         {
           data: pmData[type],
-          colors: Array(dateLabels.length).fill((opacity = 1) => `rgba(215, 255, 0, ${opacity})`)
+          // แก้ไขสีกราฟ PM เป็นสีเขียวอ่อน-เหลือง ตามภาพตัวอย่าง
+          colors: Array(dateLabels.length).fill((opacity = 1) => `rgba(194, 215, 51, ${opacity})`)
         },
       ],
     });
   };
+  
+  // เพิ่มฟังก์ชันนี้: จัดการเมื่อกดที่แท่งกราฟ
+  const handleBarPress = (index: number) => {
+    // เก็บข้อมูลวันที่และค่าของแท่งกราฟที่กด
+    const dateLabel = dateLabels[index];
+    const value = pmData[selectedPM][index];
+    
+    // สร้างออบเจ็กต์สำหรับข้อมูลของแท่งกราฟที่เลือก
+    const barData = {
+      date: dateLabel,
+      type: selectedPM,
+      value: value.toFixed(2)
+    };
+    
+    // อัปเดต state
+    setSelectedBarIndex(index);
+    setSelectedBarData(barData);
+    setShowBarData(true);
+    
+    // ซ่อนป็อปอัพโดยอัตโนมัติหลังจาก 3 วินาที
+    setTimeout(() => {
+      setShowBarData(false);
+    }, 3000);
+  };
 
-  const screenWidth = Dimensions.get("window").width - 40;
+  // แก้ไขให้ใช้ screenWidth ที่มีการปรับขนาดเพื่อไม่ให้เกินกรอบ
+  const screenWidth = Dimensions.get("window").width - 65; // ลดขนาดลงเพิ่มเติมเพื่อป้องกันเกินกรอบ
 
   if (loading) {
     return (
@@ -217,42 +246,69 @@ const PMChart = () => {
         </View>
       </View>
       
-      <BarChart
-        data={chartData}
-        width={screenWidth}
-        height={180}
-        yAxisLabel=""
-        yAxisSuffix=""
-        chartConfig={{
-          backgroundColor: "#262b36",
-          backgroundGradientFrom: "#262b36",
-          backgroundGradientTo: "#262b36",
-          decimalPlaces: 1,
-          color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          style: {
-            borderRadius: 16,
-          },
-          barPercentage: 0.6,
-          propsForHorizontalLabels: {
-            fontSize: 9,
-          },
-          propsForVerticalLabels: {
-            fontSize: 9,
-          },
-        }}
-        style={{
-          borderRadius: 8,
-          paddingRight: 0,
-        }}
-        showValuesOnTopOfBars={false}
-        fromZero
-        withHorizontalLabels={true}
-        withVerticalLabels={true}
-        withInnerLines={true}
-        segments={5}
-        horizontalLabelRotation={0}
-      />
+      {/* แก้ไขส่วนนี้ ใช้วิธีวาง TouchableOpacity ทับแท่งกราฟ */}
+      <TouchableWithoutFeedback onPress={() => setShowBarData(false)}>
+        <View>
+          <BarChart
+            data={chartData}
+            width={screenWidth}
+            height={180}
+            yAxisLabel=""
+            yAxisSuffix=""
+            chartConfig={{
+              backgroundColor: "#FDFBEE",
+              backgroundGradientFrom: "#FDFBEE",
+              backgroundGradientTo: "#FDFBEE",
+              decimalPlaces: 1,
+              color: (opacity = 1) => `rgba(84, 51, 16, ${opacity})`, //เส้นกราฟ
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,//วันที่
+              style: {
+                borderRadius: 16,
+              },
+              barPercentage: 0.5, // ลดจาก 0.6 เพื่อให้มีช่องว่างมากขึ้น
+              propsForHorizontalLabels: {
+                fontSize: 9,
+                rotation: 0,
+              },
+              propsForVerticalLabels: {
+                fontSize: 9,
+              },
+              formatYLabel: (value) => Math.min(parseFloat(value), minMaxValues.max * 1.2).toFixed(1),
+            }}
+            style={{
+              borderRadius: 8,
+              paddingRight: 10, // เพิ่ม padding ทางขวา
+              marginRight: 5,  // เพิ่ม margin
+            }}
+            showValuesOnTopOfBars={false}
+            fromZero
+            withHorizontalLabels={true}
+            withVerticalLabels={true}
+            withInnerLines={true}
+            segments={5}
+            horizontalLabelRotation={0}
+          />
+          
+          {/* เพิ่มแถบสำหรับรับการแตะทับแท่งกราฟ */}
+          <View style={styles.touchBarContainer}>
+            {chartData.labels.map((label, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.touchBar}
+                onPress={() => handleBarPress(index)}
+              />
+            ))}
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+      
+      {/* ป็อปอัพสำหรับแสดงข้อมูลแท่งกราฟ */}
+      {showBarData && selectedBarData && (
+        <View style={styles.barDataPopup}>
+          <Text style={styles.barDataTitle}>{selectedBarData.type} - {selectedBarData.date}</Text>
+          <Text style={styles.barDataValue}>{selectedBarData.value} μg/m³</Text>
+        </View>
+      )}
       
       <View style={styles.timeLabel}>
         <Text style={styles.timeLabelText}>{startDate}</Text>
@@ -261,10 +317,12 @@ const PMChart = () => {
       
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, {backgroundColor: '#d7ff00'}]}></View>
+          {/* แก้ไขสี legend ให้ตรงกับภาพตัวอย่าง - สีเขียว วงกลมPM */}
+          <View style={[styles.legendDot, {backgroundColor: '#4CAF50'}]}></View>
           <Text style={styles.legendText}>Min {minMaxValues.min.toFixed(1)}</Text>
         </View>
         <View style={styles.legendItem}>
+          {/* แก้ไขสี legend Max เป็นสีแดง ตามภาพตัวอย่าง */}
           <View style={[styles.legendDot, {backgroundColor: '#ff0000'}]}></View>
           <Text style={styles.legendText}>Max {minMaxValues.max.toFixed(1)}</Text>
         </View>
@@ -281,18 +339,23 @@ const TemperatureChart = () => {
   const [selectedType, setSelectedType] = useState<MeasurementTypesKey>("อุณหภูมิ");
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   
-  // ข้อมูลเริ่มต้น (จะถูกอัปเดตเมื่อได้ข้อมูลจริง)
+  // Initial empty data structure
   const initialMeasurementData: Record<MeasurementTypesKey, number[]> = {
-    "อุณหภูมิ": [25, 26, 27, 26, 25, 26, 25],
-    "ความชื้น": [65, 70, 75, 68, 72, 70, 67]
+    "อุณหภูมิ": [],
+    "ความชื้น": []
   };
   
   const [measurementData, setMeasurementData] = useState(initialMeasurementData);
-  const [dateLabels, setDateLabels] = useState<string[]>(["01 ม.ค.", "02 ม.ค.", "03 ม.ค.", "04 ม.ค.", "05 ม.ค.", "06 ม.ค.", "07 ม.ค."]);
+  const [dateLabels, setDateLabels] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("01-01-2024");
   const [endDate, setEndDate] = useState("07-01-2024");
-  const [minMaxValues, setMinMaxValues] = useState({ min: 20, max: 35 });
+  const [minMaxValues, setMinMaxValues] = useState({ min: 0, max: 0 });
   const [loading, setLoading] = useState(true);
+  
+  // เพิ่มส่วนนี้: state สำหรับข้อมูลเมื่อกดแท่งกราฟ
+  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
+  const [showBarData, setShowBarData] = useState(false);
+  const [selectedBarData, setSelectedBarData] = useState<any>(null);
   
   // Chart data state
   const [chartData, setChartData] = useState<ChartDataType>({
@@ -300,7 +363,7 @@ const TemperatureChart = () => {
     datasets: [
       {
         data: measurementData["อุณหภูมิ"],
-        colors: Array(7).fill((opacity = 1) => `rgba(33, 150, 243, ${opacity})`) // Blue color
+        colors: Array(7).fill((opacity = 1) => `rgba(33, 150, 243, ${opacity})`) // สีฟ้า ตามภาพตัวอย่าง
       },
     ],
   });
@@ -335,14 +398,10 @@ const TemperatureChart = () => {
           const humidityValues: number[] = [];
           
           dates.forEach(date => {
-            // ดึงข้อมูลล่าสุดของแต่ละวัน
-            const timeEntries = Object.keys(data[date]).sort();
-            const latestEntry = timeEntries[timeEntries.length - 1]; // เอาข้อมูลล่าสุดของวัน
-            
-            if (data[date][latestEntry]?.Data) {
-              const latestData = data[date][latestEntry].Data;
-              tempValues.push(parseFloat(latestData.Temperature.toFixed(1)) || 0);
-              humidityValues.push(parseFloat(latestData.Humidity.toFixed(1)) || 0);
+            // ดึงข้อมูลแต่ละวันโดยตรงจากโครงสร้างใหม่
+            if (data[date]) {
+              tempValues.push(parseFloat(data[date].temperature?.toFixed(1)) || 0);
+              humidityValues.push(parseFloat(data[date].humidity?.toFixed(1)) || 0);
             } else {
               tempValues.push(0);
               humidityValues.push(0);
@@ -375,11 +434,8 @@ const TemperatureChart = () => {
             datasets: [
               {
                 data: selectedType === "อุณหภูมิ" ? tempValues : humidityValues,
-                colors: Array(dates.length).fill(
-                  selectedType === "อุณหภูมิ"
-                    ? (opacity = 1) => `rgba(33, 150, 243, ${opacity})`
-                    : (opacity = 1) => `rgba(0, 188, 212, ${opacity})`
-                )
+                // แก้ไขสีเป็นสีฟ้าสำหรับทั้งอุณหภูมิและความชื้น ตามภาพตัวอย่าง
+                colors: Array(dates.length).fill((opacity = 1) => `rgba(33, 150, 243, ${opacity})`)
               },
             ],
           });
@@ -400,10 +456,8 @@ const TemperatureChart = () => {
     setSelectedType(type);
     setShowTypeDropdown(false);
     
-    // Different color for humidity vs temperature
-    const color = type === "อุณหภูมิ" 
-      ? (opacity = 1) => `rgba(33, 150, 243, ${opacity})` // Blue for temperature
-      : (opacity = 1) => `rgba(0, 188, 212, ${opacity})`; // Cyan for humidity
+    // สีฟ้าสำหรับทั้งอุณหภูมิและความชื้น ตามภาพตัวอย่าง
+    const color = (opacity = 1) => `rgba(33, 150, 243, ${opacity})`; // สีฟ้าเหมือนกันทั้งคู่
     
     const currentValues = measurementData[type];
     const filteredValues = currentValues.filter(v => v > 0);
@@ -423,7 +477,36 @@ const TemperatureChart = () => {
     });
   };
 
-  const screenWidth = Dimensions.get("window").width - 40;
+  // เพิ่มฟังก์ชันนี้: จัดการเมื่อกดที่แท่งกราฟ
+  const handleBarPress = (index: number) => {
+    // เก็บข้อมูลวันที่และค่าของแท่งกราฟที่กด
+    const dateLabel = dateLabels[index];
+    const value = measurementData[selectedType][index];
+    
+    // กำหนดหน่วยตามประเภทการวัด
+    const unit = selectedType === "อุณหภูมิ" ? "°C" : "%";
+    
+    // สร้างออบเจ็กต์สำหรับข้อมูลของแท่งกราฟที่เลือก
+    const barData = {
+      date: dateLabel,
+      type: selectedType,
+      value: value.toFixed(1),
+      unit: unit
+    };
+    
+    // อัปเดต state
+    setSelectedBarIndex(index);
+    setSelectedBarData(barData);
+    setShowBarData(true);
+    
+    // ซ่อนป็อปอัพโดยอัตโนมัติหลังจาก 3 วินาที
+    setTimeout(() => {
+      setShowBarData(false);
+    }, 3000);
+  };
+
+  // แก้ไขให้ใช้ screenWidth ที่มีการปรับขนาดเพื่อไม่ให้เกินกรอบ
+  const screenWidth = Dimensions.get("window").width - 50; // ลดขนาดลงเพื่อป้องกันเกินกรอบ
 
   if (loading) {
     return (
@@ -467,42 +550,69 @@ const TemperatureChart = () => {
         </View>
       </View>
       
-      <BarChart
-        data={chartData}
-        width={screenWidth}
-        height={180}
-        yAxisLabel=""
-        yAxisSuffix=""
-        chartConfig={{
-          backgroundColor: "#262b36",
-          backgroundGradientFrom: "#262b36",
-          backgroundGradientTo: "#262b36",
-          decimalPlaces: 0,
-          color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          style: {
-            borderRadius: 16,
-          },
-          barPercentage: 0.6,
-          propsForHorizontalLabels: {
-            fontSize: 9,
-          },
-          propsForVerticalLabels: {
-            fontSize: 9,
-          },
-        }}
-        style={{
-          borderRadius: 8,
-          paddingRight: 0,
-        }}
-        showValuesOnTopOfBars={false}
-        fromZero
-        withHorizontalLabels={true}
-        withVerticalLabels={true}
-        withInnerLines={true}
-        segments={5}
-        horizontalLabelRotation={0}
-      />
+      {/* แก้ไขส่วนนี้ ใช้วิธีวาง TouchableOpacity ทับแท่งกราฟ */}
+      <TouchableWithoutFeedback onPress={() => setShowBarData(false)}>
+        <View>
+          <BarChart
+            data={chartData}
+            width={screenWidth}
+            height={180}
+            yAxisLabel=""
+            yAxisSuffix=""
+            chartConfig={{
+              backgroundColor: "#FDFBEE", //ข้างในกราฟต้องเปลี่ยน3อัน
+              backgroundGradientFrom: "#FDFBEE",
+              backgroundGradientTo: "#FDFBEE",
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(84, 51, 16, ${opacity})`, //กราฟ
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, //วันที่
+              style: {
+                borderRadius: 16,
+              },
+              barPercentage: 0.5, // ลดจาก 0.6 เพื่อให้มีช่องว่างมากขึ้น
+              propsForHorizontalLabels: {
+                fontSize: 9,
+                rotation: 0,
+              },
+              propsForVerticalLabels: {
+                fontSize: 9,
+              },
+              formatYLabel: (value) => Math.min(parseFloat(value), minMaxValues.max * 1.2).toFixed(0),
+            }}
+            style={{
+              borderRadius: 8,
+              paddingRight: 10, // เพิ่ม padding ทางขวา
+              marginRight: 5,  // เพิ่ม margin
+            }}
+            showValuesOnTopOfBars={false}
+            fromZero
+            withHorizontalLabels={true}
+            withVerticalLabels={true}
+            withInnerLines={true}
+            segments={5}
+            horizontalLabelRotation={0}
+          />
+          
+          {/* เพิ่มแถบสำหรับรับการแตะทับแท่งกราฟ */}
+          <View style={styles.touchBarContainer}>
+            {chartData.labels.map((label, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.touchBar}
+                onPress={() => handleBarPress(index)}
+              />
+            ))}
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+      
+      {/* ป็อปอัพสำหรับแสดงข้อมูลแท่งกราฟ */}
+      {showBarData && selectedBarData && (
+        <View style={styles.barDataPopup}>
+          <Text style={styles.barDataTitle}>{selectedBarData.type} - {selectedBarData.date}</Text>
+          <Text style={styles.barDataValue}>{selectedBarData.value} {selectedBarData.unit}</Text>
+        </View>
+      )}
       
       <View style={styles.timeLabel}>
         <Text style={styles.timeLabelText}>{startDate}</Text>
@@ -511,11 +621,13 @@ const TemperatureChart = () => {
       
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, {backgroundColor: selectedType === "อุณหภูมิ" ? '#4CAF50' : '#00BCD4'}]}></View>
+          {/* แก้ไขสี legend เป็นสีเขียว วงกลม อุณหภูมิ */}
+          <View style={[styles.legendDot, {backgroundColor: '#4CAF50'}]}></View>
           <Text style={styles.legendText}>Min {minMaxValues.min.toFixed(1)}</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, {backgroundColor: selectedType === "อุณหภูมิ" ? '#2196F3' : '#006064'}]}></View>
+          {/* แก้ไขสี legend Max เป็นสีแดง ตามภาพตัวอย่าง */}
+          <View style={[styles.legendDot, {backgroundColor: '#ff0000'}]}></View>
           <Text style={styles.legendText}>Max {minMaxValues.max.toFixed(1)}</Text>
         </View>
       </View>
@@ -525,8 +637,12 @@ const TemperatureChart = () => {
 
 // Main StatsScreen Component
 const StatsScreen: React.FC<StatsScreenProps> = ({ navigation }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { airData, loading: hookLoading, error: hookError } = useAirQualityData('daily');
+
+  // Log data for debugging
+  useEffect(() => {
+    console.log("Air data from hook:", airData);
+  }, [airData]);
 
   // โหลดใหม่ทุกครั้งเมื่อเข้ามา
   useFocusEffect(
@@ -541,137 +657,224 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ navigation }) => {
       <ScrollView style={styles.content}>
         <Text style={styles.headerText}>กราฟแสดงข้อมูล</Text>
         
-        <PMChart />
-        <TemperatureChart />
+        {hookLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4CAF50" />
+            <Text style={styles.loadingText}>กำลังโหลดข้อมูล...</Text>
+          </View>
+        ) : hookError ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>เกิดข้อผิดพลาด: {hookError}</Text>
+          </View>
+        ) : (
+          <>
+            <PMChart />
+            <TemperatureChart />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+// ปรับปรุง Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1d24", // Dark background color
+    backgroundColor: "#ffff", //พื้นหลัง
   },
   content: {
     flex: 1,
     padding: 20,
-    paddingTop: 40,
   },
   headerText: {
-    fontSize: 22,
-    color: "white",
-    fontWeight: "normal",
-    marginBottom: 20,
-  },
-  chartCard: {
-    backgroundColor: "#262b36", // Dark chart background
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 20,
-    minHeight: 250, // ความสูงขั้นต่ำเพื่อให้มีพื้นที่แสดง loading indicator
-  },
-  chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  chartHeaderText: {
-    fontSize: 16,
-    color: "white",
-    fontWeight: "normal",
-  },
-  dropdownButton: {
-    backgroundColor: "#262b36",
-    borderRadius: 5,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-  },
-  dropdownButtonText: {
-    color: "white",
-    fontSize: 14,
-  },
-  dropdownMenu: {
-    position: "absolute",
-    right: 0,
-    top: 35,
-    backgroundColor: "#333",
-    borderRadius: 8,
-    width: 120,
-    zIndex: 1000,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  dropdownItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#444",
-  },
-  dropdownItemSelected: {
-    backgroundColor: "#444",
-  },
-  dropdownItemText: {
-    color: "white",
-    fontSize: 14,
-  },
-  timeLabel: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-    marginTop: 5,
-  },
-  timeLabelText: {
-    color: "#aaa",
-    fontSize: 12,
-  },
-  timeLabelTextRight: {
-    color: "#aaa",
-    fontSize: 12,
-  },
-  legendContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 8,
-    gap: 20,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 5,
-  },
-  legendText: {
-    color: "white",
-    fontSize: 12,
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "Black", //คำกราฟแสดงข้อมูล
+    marginBottom: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
   loadingText: {
-    color: "white",
+    color: "#ffffff",
     marginTop: 10,
+  },
+  errorContainer: {
+    padding: 20,
+    backgroundColor: "#ff000022",
+    borderRadius: 8,
+  },
+  errorText: {
+    color: "#ff5252",
+  },
+  chartCard: {
+    backgroundColor: "#FDFBEE", //กรอบ
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    // เพิ่ม shadow เพื่อแยกส่วนให้ชัดเจนขึ้น
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    // เพิ่ม overflow: 'hidden' เพื่อป้องกันเนื้อหาเกินกรอบ
+    overflow: 'hidden',
+  },
+  chartHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    paddingHorizontal: 4,
+    alignItems: "center",
+  },
+  chartHeaderText: {
     fontSize: 16,
+    fontWeight: "bold",
+    color: "Black", //คำข้างใส่กรอบPM
+  },
+  dropdownButton: {
+    backgroundColor: "#AF8F6F",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dropdownButtonText: {
+    color: "Black", //ดำเลือก PM และ อุณหภูมิ
+    fontSize: 14,
+  },
+  dropdownMenu: {
+    position: "absolute",
+    top: 32,
+    right: 0,
+    backgroundColor: "#AF8F6F",
+    borderRadius: 8,
+    padding: 4,
+    zIndex: 100,
+    width: 100,
+    // เพิ่ม shadow ให้ UI ดีขึ้น
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  dropdownItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  dropdownItemSelected: {
+    backgroundColor: "#D5C7A3",
+  },
+  dropdownItemText: {
+    color: "Black", //คำที่อยู่ในตัวเลือก
+    fontSize: 14,
   },
   loadingChartContainer: {
-    height: 200,
+    height: 180,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingChartText: {
-    color: "white",
-    marginTop: 10,
+    color: "#ffffff",
+    marginTop: 8,
+  },
+  timeLabel: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+    paddingHorizontal: 10,
+    // ปรับปรุงให้อยู่ในกรอบ
+    width: '95%',
+    alignSelf: 'center',
+  },
+  timeLabelText: {
+    color: "Black", //คำวันที่ ข้างหน้า
+    fontSize: 10,
+  },
+  timeLabelTextRight: {
+    color: "Black",//คำวันที่ ข้างหลัง
+    fontSize: 10,
+    textAlign: "right",
+  },
+  legendContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 12,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  legendText: {
+    color: "Black", // คำMinกับMax
+    fontSize: 12,
+  },
+  // เพิ่มสไตล์สำหรับป็อปอัพแสดงข้อมูลแท่งกราฟ
+  barDataPopup: {
+    position: 'absolute',
+    backgroundColor: 'rgba(213, 199, 163, 0.9)',
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // จัดตำแหน่งป็อปอัพให้อยู่ตรงกลาง
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -75 }, { translateY: -40 }],
+    // ขนาดและเงา
+    width: 150,
+    minHeight: 80,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+    zIndex: 1000,
+  },
+  barDataTitle: {
+    color: 'Black',
     fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  barDataValue: {
+    color: '#4CAF50',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  // เพิ่มสไตล์สำหรับการรองรับการแตะที่แท่งกราฟ
+  touchBarContainer: {
+    position: 'absolute',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    width: '100%',
+    height: '100%',
+    paddingHorizontal: 30, // ปรับให้เข้ากับแกน Y
+    paddingBottom: 30, // ปรับให้เข้ากับแกน X
+  },
+  touchBar: {
+    width: '10%', // ปรับความกว้างตามจำนวนแท่งกราฟ
+    height: '70%', // ความสูงของพื้นที่รับการแตะ
+    // backgroundColor: 'rgba(255, 0, 0, 0.1)', // ใส่เพื่อดูตำแหน่ง (DEBUG)
   },
 });
 

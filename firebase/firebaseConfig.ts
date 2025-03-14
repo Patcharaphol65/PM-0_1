@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, get } from 'firebase/database';
 
-// ข้อมูลการกำหนดค่า Firebase
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyCfZbN3I2vHzKfyP8sVz_7Lv0y4OMN4Wi0",
   authDomain: "project-1611547665273613438.firebaseapp.com",

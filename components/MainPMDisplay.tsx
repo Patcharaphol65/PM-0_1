@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   },
   pmLabel: {
     fontSize: 18,
-    color: 'white',
+    color: 'Black',
     marginBottom: 4,
   },
   pmValueContainer: {
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   pmUnit: {
     fontSize: 14,
-    color: '#aaaaaa',
+    color: 'Black',
     alignSelf: 'flex-start',
     marginTop: 24,
   },

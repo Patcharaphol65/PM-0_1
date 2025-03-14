@@ -59,7 +59,7 @@ const DailyHeader = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#ffff',
   },
   content: {
     flex: 1,
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 24,
-    color: 'white',
+    color: 'Black',
     fontWeight: '300',
   },
   loadingContainer: {

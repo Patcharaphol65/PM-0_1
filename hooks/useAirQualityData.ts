@@ -1,7 +1,6 @@
-// useAirQualityData.tsx
 import { useState, useEffect } from 'react';
 import { database } from '../firebase/firebaseConfig';
-import { ref, get } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 
 // กำหนดประเภทของข้อมูล
 interface AirQualityData {
@@ -21,7 +20,7 @@ const initialData: AirQualityData = {
 };
 
 /**
- * Custom hook สำหรับดึงข้อมูลคุณภาพอากาศ
+ * Custom hook สำหรับดึงข้อมูลคุณภาพอากาศแบบเรียลไทม์
  * @param type ประเภทข้อมูล 'latest' หรือ 'average' หรือ 'daily'
  * @returns ข้อมูลคุณภาพอากาศ, สถานะการโหลด, และข้อผิดพลาด
  */
@@ -31,30 +30,30 @@ export const useAirQualityData = (type: 'latest' | 'average' | 'daily') => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    // กำหนดพาธสำหรับดึงข้อมูล
+    let dataPath: string;
+    
+    switch (type) {
+      case 'latest':
+        dataPath = 'data_averaged_1m';
+        break;
+      case 'average':
+        dataPath = 'data_averaged_1h';
+        break;
+      case 'daily':
+        dataPath = 'data_averaged_24h';
+        break;
+    }
+    
+    console.log(`กำลังดึงข้อมูลแบบเรียลไทม์จาก ${dataPath}`);
+    const dataRef = ref(database, dataPath);
+    
+    // ใช้ onValue แทน get เพื่อรับฟังการเปลี่ยนแปลงแบบเรียลไทม์
+    const unsubscribe = onValue(dataRef, (snapshot) => {
       try {
-        setLoading(true);
-        setError(null);
-        
-        // กำหนดพาธสำหรับดึงข้อมูล
-        let dataPath: string;
-        
-        switch (type) {
-          case 'latest':
-            dataPath = 'data_averaged_1m';
-            break;
-          case 'average':
-            dataPath = 'data_averaged_1h';
-            break;
-          case 'daily':
-            dataPath = 'data_averaged_24h';
-            break;
-        }
-        
-        console.log(`กำลังดึงข้อมูลจาก ${dataPath}`);
-        const dataRef = ref(database, dataPath);
-        const snapshot = await get(dataRef);
-        
         if (!snapshot.exists()) {
           throw new Error(`ไม่พบข้อมูลใน ${dataPath}`);
         }
@@ -62,8 +61,7 @@ export const useAirQualityData = (type: 'latest' | 'average' | 'daily') => {
         // ดึงข้อมูลจาก snapshot
         const data = snapshot.val();
         
-        // หาข้อมูลล่าสุดสำหรับทุกประเภท (latest, average, daily)
-        // เนื่องจากทั้ง data_averaged_1m, data_averaged_1h และ data_averaged_24h มีโครงสร้างคล้ายกัน
+        // หาข้อมูลล่าสุด
         const dates = Object.keys(data).sort();
         
         if (dates.length === 0) {
@@ -92,19 +90,19 @@ export const useAirQualityData = (type: 'latest' | 'average' | 'daily') => {
         setAirData(airQualityData);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching air quality data:', err);
-        setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+        console.error('Error processing air quality data:', err);
+        setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการประมวลผลข้อมูล');
         setLoading(false);
       }
-    };
+    }, (err) => {
+      console.error('Error fetching air quality data:', err);
+      setError(err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+      setLoading(false);
+    });
     
-    fetchData();
+    // Cleanup function - ยกเลิกการสมัครรับข้อมูลเมื่อคอมโพเนนต์ถูกทำลาย
+    return () => unsubscribe();
     
-    // สร้าง interval เพื่อดึงข้อมูลใหม่ทุก 1 นาที
-    const intervalId = setInterval(fetchData, 60000);
-    
-    // Cleanup interval เมื่อคอมโพเนนต์ถูกทำลาย
-    return () => clearInterval(intervalId);
   }, [type]);
   
   return { airData, loading, error };
