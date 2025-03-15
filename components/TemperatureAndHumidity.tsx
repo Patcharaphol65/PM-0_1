@@ -30,7 +30,7 @@ const getHumidityEmoji = (humidity: number): { emoji: string, color: string } =>
   if (humidity < 20) {
     return { emoji: "🏜️", color: "#F44336" }; // Very dry
   } else if (humidity < 30) {
-    return { emoji: "📄", color: "#FF9800" }; // Dry
+    return { emoji: "🌵", color: "#FF9800" }; // Dry
   } else if (humidity < 40) {
     return { emoji: "🙂", color: "#FFC107" }; // Slightly dry
   } else if (humidity < 60) {
